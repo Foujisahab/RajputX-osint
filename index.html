@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RajputX OSINT Tool</title>
+<meta name="description" content="Free, client-side OSINT multi-search launcher with iOS-friendly batch mode.">
+<style>
+  :root{
+    --bg:#0a0f0a;
+    --panel:#0e1510;
+    --accent:#00ff95;
+    --accent2:#45ffd3;
+    --muted:#9bd9c0;
+    --warn:#ffcc00;
+    --text:#e8fff4;
+    --danger:#ff5c7a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background: radial-gradient(1200px 800px at 20% 0%, #0c1a12 0%, #0a0f0a 50%, #050705 100%);
+    color:var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:16px;
+    max-width:1000px;
+    margin:40px auto;
+    padding:0 16px 80px;
+  }
+  header{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:16px; background:linear-gradient(180deg, rgba(0,255,149,.06), rgba(0,255,149,.02));
+    border:1px solid rgba(0,255,149,.25); border-radius:12px;
+    position:relative; overflow:hidden;
+  }
+  header:before{
+    content:""; position:absolute; inset:0;
+    background-image: linear-gradient(transparent 24px, rgba(0,255,149,.06) 25px),
+                      linear-gradient(90deg, transparent 24px, rgba(0,255,149,.06) 25px);
+    background-size: 26px 26px;
+    opacity:.2; pointer-events:none; mix-blend:screen;
+  }
+  .brand{ font-weight:800; letter-spacing:.5px; font-size:20px; }
+  .blink{ animation: blink 1.2s steps(2, start) infinite; color:var(--accent);}
+  @keyframes blink{ to { visibility: hidden; } }
+  .row{display:flex; flex-wrap:wrap; gap:10px}
+  .input-bar{ display:flex; gap:10px; width:100%; flex-wrap:wrap; }
+  input[type="text"]{
+    flex:1;
+    background:#06120d; color:var(--text); border:1px solid rgba(0,255,149,.35);
+    padding:14px 14px; border-radius:10px; outline:none; font-size:16px;
+  }
+  select, .pill, .toggle, button{
+    border:1px solid rgba(0,255,149,.35);
+    padding:10px 14px; border-radius:10px; cursor:pointer; user-select:none;
+    background: #07130e; color:var(--muted);
+    transition: transform .06s ease, box-shadow .1s ease, border-color .2s ease;
+  }
+  .pill:hover, .toggle:hover, button:hover{ transform: translateY(-1px); box-shadow:0 6px 20px rgba(0,255,149,.15); color:var(--text); border-color:var(--accent2)}
+  .pill:active, .toggle:active, button:active{ transform: translateY(0) scale(.99) }
+  .pill{ border-radius:999px; }
+  .section{
+    background: linear-gradient(180deg, rgba(0,255,149,.03), rgba(0,255,149,.01));
+    border:1px solid rgba(0,255,149,.2);
+    border-radius:12px; padding:16px;
+  }
+  .hint{color:#8bc8b2; font-size:13px; opacity:.9}
+  .kbd{padding:1px 6px;border:1px solid rgba(255,255,255,.15);border-bottom-width:2px;border-radius:6px;background:#0b1511;color:#eafff6}
+  footer{opacity:.8; text-align:center; font-size:12px; margin-top:10px}
+  .mini{font-size:12px; opacity:.85}
+  .group-label{font-weight:700; color:var(--accent); margin:8px 0 6px}
+  .warn{color:var(--warn)}
+  .danger{color:var(--danger)}
+  #queue{white-space: pre-wrap; background:#06120d; padding:10px; border-radius:8px; border:1px solid rgba(0,255,149,.25); max-height:240px; overflow:auto}
+  .inline{display:inline-flex; gap:8px; align-items:center}
+</style>
+</head>
+<body>
+
+<div class="grid">
+  <header>
+    <div class="brand">[ RajputX OSINT Tool ]<span class="blink">_</span></div>
+    <div class="input-bar">
+      <input id="q" type="text" placeholder="Enter target: name / @username / email / domain / IP / phone" autofocus />
+      <div class="row">
+        <div class="pill" onclick="openGroup('general')">General</div>
+        <div class="pill" onclick="openGroup('person')">Name</div>
+        <div class="pill" onclick="openGroup('username')">Username</div>
+        <div class="pill" onclick="openGroup('email')">Email</div>
+        <div class="pill" onclick="openGroup('domain')">Domain</div>
+        <div class="pill" onclick="openGroup('ip')">IP</div>
+        <div class="pill" onclick="openGroup('phone')">Phone</div>
+        <div class="pill" onclick="openGroup('darkweb')">Dark Web</div>
+      </div>
+      <div class="row">
+        <span class="inline">
+          Open mode:
+          <select id="mode">
+            <option value="multi">Multi‑tab</option>
+            <option value="queue">Queue links</option>
+            <option value="batch">Batch (iOS)</option>
+          </select>
+        </span>
+        <span class="inline">
+          Country (Phone):
+          <select id="cc">
+            <option value="in" selected>IN</option>
+            <option value="us">US</option>
+            <option value="uk">UK</option>
+          </select>
+        </span>
+        <button onclick="testPopup()">Test Pop‑up</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="section">
+    <div class="group-label">How it works</div>
+    <div class="hint">
+      Type a target → tap a category pill. If your browser blocks multiple tabs, switch <b>Open mode</b> to <b>Queue</b> or <b>Batch</b> (opens 5 at a time). Allow pop‑ups for smooth one‑click launching.
+    </div>
+    <div class="hint warn">iOS users: use <b>Batch (iOS)</b> or hit <b>Test Pop‑up</b> then allow pop‑ups.</div>
+  </div>
+
+  <div class="section" id="queueBox" style="display:none">
+    <div class="group-label">Queued links (tap to open):</div>
+    <div id="queue"></div>
+  </div>
+
+  <footer>Free • Client-side only • No data stored</footer>
+</div>
+
+<script>
+  function enc(x){ return encodeURIComponent(x.trim()); }
+  function val(){ return document.getElementById('q').value.trim(); }
+  function phoneCC(){ return document.getElementById('cc').value || 'in'; }
+  function mode(){ return document.getElementById('mode').value || 'multi'; }
+
+  function testPopup(){
+    const w = window.open('about:blank', '_blank', 'noopener');
+    if(!w){ alert('Pop‑up blocked. Enable pop‑ups for this page or switch to Queue/Batch mode.'); return; }
+    w.document.write('<title>RajputX Pop‑up OK</title><p style="font-family:monospace">✅ Pop‑ups allowed. You are good to go.</p>');
+    try{ w.close(); }catch(e){}
+  }
+
+  function renderQueue(urls){
+    const q = document.getElementById('queue');
+    const box = document.getElementById('queueBox');
+    q.innerHTML = urls.map(u => `<div><a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a></div>`).join('');
+    box.style.display = 'block';
+    window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+  }
+
+  function openMany(urls){
+    const m = mode();
+    if(m==='queue'){
+      renderQueue(urls);
+      return;
+    }
+    if(m==='batch'){
+      // open 5 per click
+      let pointer = 0;
+      renderQueue(urls);
+      const btn = document.createElement('button');
+      btn.textContent = 'Open Next 5';
+      btn.onclick = ()=>{
+        const slice = urls.slice(pointer, pointer+5);
+        pointer += 5;
+        for(const u of slice){
+          window.open(u, '_blank');
+        }
+        if(pointer >= urls.length){ btn.disabled = true; btn.textContent = 'All opened'; }
+      };
+      document.getElementById('queue').prepend(btn);
+      return;
+    }
+    // Multi-tab: hidden anchors trick
+    const holder = document.createElement('div');
+    holder.style.position='absolute'; holder.style.left='-9999px';
+    document.body.appendChild(holder);
+    for(const u of urls){
+      const a = document.createElement('a');
+      a.href = u; a.target = '_blank'; a.rel='noopener noreferrer';
+      holder.appendChild(a);
+      a.click();
+    }
+    setTimeout(()=> holder.remove(), 1000);
+  }
+
+  function openGroup(kind){
+    const q = val();
+    if(!q){ alert('Pehle query daalo (name/username/email/domain/IP/phone).'); return; }
+    const e = enc(q);
+    let out = [];
+
+    if(kind==='general'){
+      out = [
+        `https://www.google.com/search?q=${e}`,
+        `https://duckduckgo.com/?q=${e}`,
+        `https://www.bing.com/search?q=${e}`,
+        `https://www.google.com/search?tbm=isch&q=${e}`,
+        `https://www.google.com/search?tbm=nws&q=${e}`
+      ];
+    }
+
+    if(kind==='person'){
+      out = [
+        `https://www.google.com/search?q=%22${e}%22+site:facebook.com`,
+        `https://www.google.com/search?q=%22${e}%22+site:linkedin.com`,
+        `https://www.google.com/search?q=%22${e}%22+site:instagram.com`,
+        `https://www.google.com/search?q=%22${e}%22+site:twitter.com`,
+        `https://www.google.com/search?q=%22${e}%22+email`,
+        `https://www.google.com/search?q=%22${e}%22+phone`
+      ];
+    }
+
+    if(kind==='username'){
+      const u = q.replace(/^@/,''); // strip @ if present
+      const ue = enc(u);
+      out = [
+        `https://whatsmyname.app/`,
+        `https://namechk.com/`,
+        `https://www.google.com/search?q=%22${ue}%22+username`,
+        `https://github.com/${ue}`,
+        `https://www.reddit.com/user/${ue}/`,
+        `https://www.instagram.com/${ue}/`,
+        `https://twitter.com/${ue}`
+      ];
+    }
+
+    if(kind==='email'){
+      out = [
+        `https://haveibeenpwned.com/account/${e}`,
+        `https://www.dehashed.com/search?query=${e}`,
+        `https://www.google.com/search?q=%22${e}%22`,
+        `https://hunter.io/search/${e}`,
+        `https://www.skymem.info/srch?q=${e}`
+      ];
+    }
+
+    if(kind==='domain'){
+      const d = q.toLowerCase().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+      const de = encodeURIComponent(d);
+      out = [
+        `https://www.google.com/search?q=site:${de}`,
+        `https://www.whois.com/whois/${de}`,
+        `https://securitytrails.com/domain/${de}`,
+        `https://crt.sh/?q=%25.${de}`,
+        `https://rapiddns.io/subdomain/${de}?full=1`,
+        `https://urlscan.io/search/#domain:${de}`,
+        `https://www.shodan.io/search?query=${de}`,
+        `https://search.censys.io/search?resource=hosts&q=${de}`
+      ];
+    }
+
+    if(kind==='ip'){
+      out = [
+        `https://www.shodan.io/host/${e}`,
+        `https://search.censys.io/hosts/${e}`,
+        `https://www.virustotal.com/gui/ip-address/${e}`,
+        `https://www.abuseipdb.com/check/${e}`,
+        `https://ipinfo.io/${e}`
+      ];
+    }
+
+    if(kind==='phone'){
+      const cc = phoneCC(); // in/us/uk
+      const pe = e.replace(/\s+/g,'');
+      const tcPath = (cc==='in') ? 'in' : (cc==='us' ? 'us' : 'gb');
+      out = [
+        `https://www.truecaller.com/search/${tcPath}/${pe}`,
+        `https://sync.me/search/?number=${pe}`,
+        `https://www.google.com/search?q=%22${pe}%22`,
+        `https://www.google.com/search?q=%22${pe}%22+site:facebook.com`,
+        `https://www.google.com/search?q=%22${pe}%22+site:twitter.com`
+      ];
+    }
+
+    if(kind==='darkweb'){
+      out = [
+        `https://intelx.io/?s=${e}`,
+        `https://ahmia.fi/search/?q=${e}`,
+        `https://www.google.com/search?q=site:pastebin.com+%22${e}%22`,
+        `https://www.google.com/search?q=site:paste.ee+%22${e}%22`,
+        `https://www.google.com/search?q=site:ghostbin.com+%22${e}%22`
+      ];
+    }
+
+    openMany(out);
+  }
+
+  // Keyboard: Enter -> General
+  document.addEventListener('keydown', (ev)=>{
+    if(ev.key==='Enter'){ openGroup('general'); }
+  });
+</script>
+</body>
+</html>
